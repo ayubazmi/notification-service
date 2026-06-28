@@ -1,0 +1,40 @@
+services:
+  shopflow-redis:
+    image: redis:7-alpine
+    container_name: shopflow-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes   # data persist karo
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shopflow-network
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shopflow-notification-service
+    environment:
+      REDIS_URL: redis://shopflow-redis:6379
+    ports:
+      - "8004:8004"
+    depends_on:
+      shopflow-redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - shopflow-network
+
+volumes:
+  redis_data:
+
+networks:
+  shopflow-network:
+    name: shopflow-network
+    driver: bridge
